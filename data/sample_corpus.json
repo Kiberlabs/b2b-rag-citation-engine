@@ -1,0 +1,23 @@
+[
+  {
+    "doc_id": "REG-GDPR-2026",
+    "title": "B2B Data Protection & Breach Notification Regulation",
+    "category": "compliance",
+    "language": "en",
+    "content": "Article 1: Scope and Definitions\nThis regulation governs automated processing of personal customer records by B2B software processors operating within the European Economic Area.\n\nArticle 4: Incident Notification Deadline\nUpon discovering a confirmed personal data breach, the data processor must notify the controller without undue delay and no later than 72 hours after detection, including affected record counts and mitigation steps.\n\nArticle 7: Audit Log Retention\nAccess logs and cryptographic audit hashes must be retained in append-only storage for a minimum of 24 months and purged automatically after 60 months unless subject to active litigation."
+  },
+  {
+    "doc_id": "POL-ESCROW-SLA",
+    "title": "Commercial Fixed-Price Milestone & Escrow Settlement Policy",
+    "category": "commercial_policy",
+    "language": "en",
+    "content": "Section 1: Milestone Funding Requirement\nEngineering execution begins strictly after the client approves the technical specification and funds Milestone 1 inside the designated escrow account.\n\nSection 2: Acceptance & QA Verification\nEvery milestone delivery must include automated unit tests and reproducible CLI commands. Clients have 5 business days to verify deliverables against the agreed acceptance criteria before automatic escrow release."
+  },
+  {
+    "doc_id": "NORM-ES-FACTURA",
+    "title": "Normativa Interna de Retención de Facturas y Contratación B2B",
+    "category": "compliance",
+    "language": "es",
+    "content": "Artículo 3: Conservación de Facturas Electrónicas\nTodas las facturas electrónicas emitidas a clientes corporativos deben conservarse en formato estructurado PDF y XML durante un plazo mínimo de 6 años para inspecciones fiscales.\n\nArtículo 5: Escalamiento de Incidencias Críticas\nCualquier caída de integración de webhooks o pérdida de sincronización contable debe escalarse al responsable técnico en menos de 2 horas hábiles."
+  }
+]
