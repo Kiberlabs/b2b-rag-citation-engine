@@ -1,5 +1,7 @@
 # KiberLabs — B2B RAG & Grounded Citation Engine
 
+[![CI](https://github.com/Kiberlabs/b2b-rag-citation-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/Kiberlabs/b2b-rag-citation-engine/actions/workflows/ci.yml)
+
 ![KiberLabs B2B RAG & Grounded Citation Engine](assets/cover_04_rag_engine.jpg)
 
 A deterministic **Python 3.11+ RAG ingestion, SQLite FTS5/BM25 retrieval, and zero-hallucination citation verification engine** designed for legal codes, regulatory compliance teams, and B2B knowledge bases.
