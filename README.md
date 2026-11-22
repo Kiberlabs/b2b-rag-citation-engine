@@ -8,6 +8,8 @@ A deterministic **Python 3.11+ RAG ingestion, SQLite FTS5/BM25 retrieval, and ze
 
 Instead of blindly stuffing raw text into an LLM prompt and hoping citations are real, `rag-citation-engine` segments documents strictly by **Article / Section / Clause**, indexes them in concurrent **SQLite (`WAL` + `FTS5`)** with bilingual accent-folding (`EN`/`ES`), sanitizes user queries against FTS5 syntax injection, and deterministically **abstains (`INSUFFICIENT_EVIDENCE`)** whenever no verified corpus clause meets the evidence threshold.
 
+
+> **Public Evaluation Sandbox & Scope Note:** This repository contains the open reference core and deterministic `pytest` harness operating on synthetic fixtures (`data/sample_*`) under the [MIT License](LICENSE). Production connectors (live anti-bot scrapers, WhatsApp/Telegram cloud webhooks, ERP/SAP & VIES adapters, and multi-tenant deployment manifests) are maintained in **KiberLabs Private Enterprise Repositories** and delivered under client SOW.
 ---
 
 ## Architecture
@@ -77,4 +79,4 @@ b2b-rag-citation-engine/
 
 ## License
 
-MIT — Built by **KiberLabs Engineering** (*AI & Python Automation Studio*).
+[MIT](LICENSE) — Built by **KiberLabs Engineering** (*AI & Python Automation Studio*).
