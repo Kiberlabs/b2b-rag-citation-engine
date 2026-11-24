@@ -15,6 +15,24 @@ class DocumentInput(BaseModel):
     language: Literal["en", "es"] = "en"
     content: str = Field(min_length=20)
 
+    @field_validator("title")
+    @classmethod
+    def _clean_title(cls, value: str) -> str:
+        """Strip null bytes and reject whitespace-only or too-short titles."""
+        cleaned = value.replace("\x00", "").strip()
+        if len(cleaned) < 3:
+            raise ValueError("Document title must contain at least 3 non-whitespace characters")
+        return cleaned
+
+    @field_validator("category")
+    @classmethod
+    def _clean_category(cls, value: str) -> str:
+        """Strip null bytes and reject whitespace-only or too-short categories."""
+        cleaned = value.replace("\x00", "").strip()
+        if len(cleaned) < 2:
+            raise ValueError("Document category must contain at least 2 non-whitespace characters")
+        return cleaned
+
     @field_validator("content")
     @classmethod
     def _reject_null_bytes(cls, value: str) -> str:

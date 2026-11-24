@@ -65,7 +65,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     with CitationStore(args.db) as store:
         docs_ok, chunks_ok, rejected = ingest_corpus_file(args.corpus, store)
-        answer = build_grounded_response(args.q, store, top_k=args.top_k)
+        top_k = max(1, min(args.top_k, 50))
+        answer = build_grounded_response(args.q, store, top_k=top_k)
 
     if args.json:
         payload = {

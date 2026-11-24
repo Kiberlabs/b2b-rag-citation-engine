@@ -22,6 +22,8 @@ def compute_chunk_hash(doc_id: str, section_ref: str, text: str) -> str:
 
 def _split_long_text(text: str, max_chars: int) -> list[str]:
     """Break oversized sections on sentence boundaries without cutting words mid-token."""
+    if isinstance(max_chars, bool) or max_chars < 1:
+        raise ValueError("max_chars must be >= 1")
     cleaned = " ".join(text.split())
     if len(cleaned) <= max_chars:
         return [cleaned]
@@ -59,6 +61,8 @@ def split_into_section_chunks(doc: DocumentInput, max_chars: int = 600) -> list[
     Flow: split by blank lines or article/section headings -> preserve exact section_ref
     headers -> subdivide oversized clauses on sentence boundaries -> attach SHA-256 hashes.
     """
+    if isinstance(max_chars, bool) or max_chars < 50:
+        raise ValueError("max_chars must be >= 50")
     sections: list[tuple[str, list[str]]] = []
     current_ref = "General"
     current_lines: list[str] = []

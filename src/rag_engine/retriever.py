@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import re
 import unicodedata
 
@@ -10,6 +11,8 @@ from rag_engine.storage import CitationStore
 
 _STOPWORDS = frozenset(
     {
+        "to", "in", "of", "on", "at", "by", "an", "is", "as",
+        "de", "en", "el", "la", "es", "un", "al",
         "the", "and", "for", "with", "that", "this", "from", "are", "was", "what", "when", "how",
         "does", "under", "about", "into", "your", "have", "must", "can", "will",
         "los", "las", "del", "una", "uno", "para", "con", "que", "como", "cual", "cuando",
@@ -29,11 +32,11 @@ def extract_query_tokens(query: str) -> list[str]:
 
     Prevents FTS5 syntax injection crashes caused by quotes, asterisks, or boolean keywords.
     """
-    folded = _strip_accents(query).lower()
+    folded = _strip_accents(query.replace("\x00", "")).lower()
     raw_tokens = re.findall(r"[a-z0-9]+", folded)
     filtered = [tok for tok in raw_tokens if len(tok) >= 2 and tok not in _STOPWORDS]
-    # Deduplicate while preserving order
-    return list(dict.fromkeys(filtered))
+    # Deduplicate while preserving order, bounded to avoid oversized FTS5 expressions
+    return list(dict.fromkeys(filtered))[:32]
 
 
 def build_safe_fts_query(tokens: list[str]) -> str:
@@ -62,6 +65,9 @@ def build_grounded_response(
     Flow: sanitize query tokens -> execute FTS5 BM25 search -> filter hits below min_token_overlap ->
     verify every cited chunk_id exists in SQLite -> return GROUNDED answer or INSUFFICIENT_EVIDENCE.
     """
+    if isinstance(min_token_overlap, bool) or not math.isfinite(min_token_overlap) or not (0.0 <= min_token_overlap <= 1.0):
+        raise ValueError("min_token_overlap must be between 0.0 and 1.0")
+    safe_top_k = max(1, min(int(top_k), 50))
     tokens = extract_query_tokens(query)
     if not tokens:
         return GroundedAnswer(
@@ -73,7 +79,8 @@ def build_grounded_response(
         )
 
     fts_expr = build_safe_fts_query(tokens)
-    rows = store.search_fts_bm25(fts_expr, top_k=top_k)
+    candidate_k = max(safe_top_k * 5, 25)
+    rows = store.search_fts_bm25(fts_expr, top_k=candidate_k)
 
     hits: list[CitationHit] = []
     for row in rows:
@@ -107,6 +114,7 @@ def build_grounded_response(
         )
 
     hits.sort(key=lambda h: (h.token_overlap, h.bm25_score), reverse=True)
+    hits = hits[:safe_top_k]
     verified = store.verify_citation_ids([h.chunk_id for h in hits])
     top_hit = hits[0]
     summary = (
