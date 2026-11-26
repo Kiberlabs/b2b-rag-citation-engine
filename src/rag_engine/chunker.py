@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import unicodedata
 
 from rag_engine.models import DocumentChunk, DocumentInput
 
@@ -67,7 +68,7 @@ def split_into_section_chunks(doc: DocumentInput, max_chars: int = 600) -> list[
     current_ref = "General"
     current_lines: list[str] = []
 
-    for raw_line in doc.content.splitlines():
+    for raw_line in unicodedata.normalize("NFC", doc.content).splitlines():
         line = raw_line.strip()
         if not line:
             continue

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import gc
 import json
 import random
+import shutil
 import sqlite3
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -464,3 +467,91 @@ def test_randomized_property_fuzzing_queries_and_chunker(tmp_path: Path) -> None
             assert all(1 <= c.char_count == len(c.text) <= max_chars for c in chunks)
             assert store.upsert_document(doc, chunks) == len(chunks)
             assert store.upsert_document(doc, chunks) == len(chunks)
+
+
+def test_unicode_nfd_nfkc_zero_width_chunking_and_retrieval(tmp_path: Path) -> None:
+    for zw in ("\u200b\u200c\u200d", "\ufeff \u2060"):
+        with pytest.raises(ValidationError):
+            DocumentInput(doc_id="ZW-T", title=zw, content="Valid body text with enough characters.")
+        with pytest.raises(ValidationError):
+            DocumentInput(doc_id="ZW-C", title="Valid Title", category=zw, content="Valid body text with enough characters.")
+        with pytest.raises(ValidationError):
+            DocumentInput(doc_id="ZW-B", title="Valid Title", content=zw * 10)
+
+    nfd_doc = DocumentInput(
+        doc_id="NFD-ES",
+        title="Normativa NFD",
+        language="es",
+        content="Arti\u0301culo 3: Conservacio\u0301n\nLas facturas electro\u0301nicas deben conservarse durante 4 an\u0303os.",
+    )
+    chunks = split_into_section_chunks(nfd_doc, max_chars=400)
+    assert chunks[0].section_ref == "Artículo 3: Conservación"
+
+    with CitationStore(tmp_path / "unicode.db") as store:
+        store.upsert_document(nfd_doc, chunks)
+        # Zero-width split + NFKC fullwidth query must still ground cleanly
+        ans_zw = build_grounded_response("fact\u200buras electro\u200bnicas", store)
+        assert ans_zw.status == "GROUNDED"
+        assert ans_zw.citations[0].doc_id == "NFD-ES"
+
+        ans_fw = build_grounded_response("\uff46\uff41\uff43\uff54\uff55\uff52\uff41\uff53", store)
+        assert ans_fw.status == "GROUNDED"
+        assert ans_fw.citations[0].doc_id == "NFD-ES"
+
+
+def test_top_k_int64_bounds_and_16_thread_wal_stress_and_rmtree(tmp_path: Path) -> None:
+    wal_dir = tmp_path / "wal16"
+    wal_dir.mkdir()
+    db_path = wal_dir / "stress16.db"
+    barrier = threading.Barrier(16)
+    errors: list[tuple[int, Exception]] = []
+    err_lock = threading.Lock()
+
+    with CitationStore(db_path) as seed_store:
+        ingest_corpus_file(_sample_corpus_path(), seed_store)
+        assert seed_store.journal_mode() == "wal"
+        assert seed_store._ensure_conn().execute("PRAGMA busy_timeout;").fetchone()[0] == 5000
+
+    def _worker(tid: int) -> None:
+        try:
+            barrier.wait(timeout=5.0)
+            with CitationStore(db_path) as store:
+                doc = DocumentInput(
+                    doc_id=f"S16-{tid:02d}",
+                    title=f"Concurrent Policy {tid}",
+                    content=f"Article {tid}: Telemetry\nEncrypted telemetry compliance verification retention clause {tid}.",
+                )
+                store.upsert_document(doc, split_into_section_chunks(doc))
+                ans = build_grounded_response("telemetry compliance verification retention", store)
+                assert ans.status == "GROUNDED"
+                assert ans.verified is True
+        except Exception as exc:
+            with err_lock:
+                errors.append((tid, exc))
+
+    with ThreadPoolExecutor(max_workers=16) as pool:
+        list(pool.map(_worker, range(16)))
+
+    assert errors == []
+    with CitationStore(db_path) as store:
+        for bound in (0, 2**63 - 1, 2**63, -(2**63) - 1):
+            ans = build_grounded_response("data breach notification", store, top_k=bound)
+            assert ans.status == "GROUNDED"
+            assert ans.verified is True
+
+    shutil.rmtree(wal_dir)
+    assert not wal_dir.exists()
+
+    # Unclosed CitationStore relies on weakref.finalize during GC before rmtree (WinError 32 check)
+    leak_dir = tmp_path / "wal_gc"
+    leak_dir.mkdir()
+    leak_db = leak_dir / "gc.db"
+
+    def _unclosed() -> None:
+        s = CitationStore(leak_db)
+        ingest_corpus_file(_sample_corpus_path(), s)
+
+    _unclosed()
+    gc.collect()
+    shutil.rmtree(leak_dir)
+    assert not leak_dir.exists()

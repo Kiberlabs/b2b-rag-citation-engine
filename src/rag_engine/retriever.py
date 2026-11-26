@@ -21,9 +21,13 @@ _STOPWORDS = frozenset(
 )
 
 
+_ZERO_WIDTH_RE = re.compile(r"[\u200b-\u200f\u202a-\u202e\u2060\ufeff]")
+
+
 def _strip_accents(text: str) -> str:
     """Fold Unicode accents (e.g. 'artículo' -> 'articulo') for bilingual EN/ES lexical overlap."""
-    nfkd = unicodedata.normalize("NFKD", text)
+    cleaned = _ZERO_WIDTH_RE.sub("", text)
+    nfkd = unicodedata.normalize("NFKD", cleaned)
     return "".join(ch for ch in nfkd if not unicodedata.combining(ch))
 
 

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 from pydantic import BaseModel, Field, field_validator
+
+_ZERO_WIDTH_RE = re.compile(r"[\u200b-\u200f\u202a-\u202e\u2060\ufeff]")
 
 
 class DocumentInput(BaseModel):
@@ -20,7 +23,7 @@ class DocumentInput(BaseModel):
     def _clean_title(cls, value: str) -> str:
         """Strip null bytes and reject whitespace-only or too-short titles."""
         cleaned = value.replace("\x00", "").strip()
-        if len(cleaned) < 3:
+        if len(_ZERO_WIDTH_RE.sub("", cleaned)) < 3:
             raise ValueError("Document title must contain at least 3 non-whitespace characters")
         return cleaned
 
@@ -29,7 +32,7 @@ class DocumentInput(BaseModel):
     def _clean_category(cls, value: str) -> str:
         """Strip null bytes and reject whitespace-only or too-short categories."""
         cleaned = value.replace("\x00", "").strip()
-        if len(cleaned) < 2:
+        if len(_ZERO_WIDTH_RE.sub("", cleaned)) < 2:
             raise ValueError("Document category must contain at least 2 non-whitespace characters")
         return cleaned
 
@@ -38,7 +41,7 @@ class DocumentInput(BaseModel):
     def _reject_null_bytes(cls, value: str) -> str:
         """Strip null bytes and reject whitespace-only documents at ingestion boundary."""
         cleaned = value.replace("\x00", "").strip()
-        if len(cleaned) < 20:
+        if len(_ZERO_WIDTH_RE.sub("", cleaned)) < 20:
             raise ValueError("Document content must contain at least 20 non-whitespace characters")
         return cleaned
 
